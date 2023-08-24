@@ -9,8 +9,7 @@ import { promisify } from 'util';
  * @returns {boolean}
  */
 export const checkIfFileOrDirectoryExists = (path: string): boolean => {
-    console.log('asd', path);
-    return fs.existsSync(path);
+  return fs.existsSync(path);
 };
 
 /**
@@ -22,12 +21,12 @@ export const checkIfFileOrDirectoryExists = (path: string): boolean => {
  * @returns {Promise<Buffer>}
  */
 export const getFile = async (
-    path: string,
-    encoding: string,
+  path: string,
+  encoding: string,
 ): Promise<string | Buffer> => {
-    const readFile = promisify(fs.readFile);
+  const readFile = promisify(fs.readFile);
 
-    return encoding ? readFile(path, encoding as any) : readFile(path, {});
+  return encoding ? readFile(path, encoding as any) : readFile(path, {});
 };
 
 /**
@@ -40,17 +39,17 @@ export const getFile = async (
  * @return {Promise<void>}
  */
 export const createFile = async (
-    path: string,
-    fileName: string,
-    data: string,
+  path: string,
+  fileName: string,
+  data: string,
 ): Promise<void> => {
-    if (!checkIfFileOrDirectoryExists(path)) {
-        fs.mkdirSync(path);
-    }
+  if (!checkIfFileOrDirectoryExists(path)) {
+    fs.mkdirSync(path);
+  }
 
-    const writeFile = promisify(fs.writeFile);
+  const writeFile = promisify(fs.writeFile);
 
-    return await writeFile(`${path}/${fileName}`, data, 'utf8');
+  return await writeFile(`${path}/${fileName}`, data, 'utf8');
 };
 
 /**
@@ -61,7 +60,7 @@ export const createFile = async (
  * @returns {Promise<void>}
  */
 export const deleteFile = async (path: string): Promise<void> => {
-    const unlink = promisify(fs.unlink);
+  const unlink = promisify(fs.unlink);
 
-    return await unlink(path);
+  return await unlink(path);
 };

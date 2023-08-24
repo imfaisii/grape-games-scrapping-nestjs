@@ -1,28 +1,49 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 import { ScrappersService } from './scrappers.service';
-import { containsStories, createApiResponse } from '@src/helpers/global';
+import { createApiResponse } from '@src/helpers/global';
+import { INSTAGRAM, REEL, STORIES } from './constants';
+import { Request } from 'express';
 
 @Controller('scrappers')
 export class ScrappersController {
-    constructor(private readonly scrappersService: ScrappersService) {}
+  constructor(private readonly scrappersService: ScrappersService) {}
 
-    @Post()
-    async scrap(@Body() body: any) {
-        try {
-            const { url, showBrowser } = body;
+  @Post()
+  async scrap(@Req() req: Request, @Body() body: any) {
+    try {
+      const requestHost = this.getHostnameWithScheme(req);
+      const { url, platform, showBrowser } = body;
 
-            if (!url || !containsStories(url)) {
-                return createApiResponse(false, 'invalid url');
-            }
+      if (!url || !platform) {
+        return createApiResponse(false, 'invalid url or platform');
+      }
 
-            const { data } = await this.scrappersService.scrap(
-                body.url,
-                showBrowser,
-            );
-
-            return createApiResponse(true, 'success', data);
-        } catch (error) {
-            return createApiResponse(false, error.message);
+      if (platform.name == INSTAGRAM) {
+        if (platform.type == STORIES && !url.includes(STORIES)) {
+          return createApiResponse(false, 'invalid url instagram stories');
         }
+
+        if (platform.type == REEL && !url.includes(REEL)) {
+          return createApiResponse(false, 'invalid url instagram reel');
+        }
+      }
+
+      const { data } = await this.scrappersService.scrap(
+        body.url,
+        platform,
+        showBrowser,
+        requestHost,
+      );
+
+      return createApiResponse(true, 'success', data);
+    } catch (error) {
+      return createApiResponse(false, error.message);
     }
+  }
+
+  getHostnameWithScheme(@Req() req: Request): string {
+    const protocol = req.protocol || 'http';
+    const host = req.headers.host || '';
+    return `${protocol}://${host}`;
+  }
 }

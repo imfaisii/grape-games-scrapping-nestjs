@@ -4,6 +4,6 @@ import { ScrappersController } from './scrappers.controller';
 
 @Module({
   controllers: [ScrappersController],
-  providers: [ScrappersService]
+  providers: [ScrappersService],
 })
 export class ScrappersModule {}
