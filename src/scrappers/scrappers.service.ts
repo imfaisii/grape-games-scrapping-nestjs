@@ -9,6 +9,8 @@ import {
   BROWSER_OPTIONS,
   COOKIES_PATH,
   FACEBOOK_COOKIES_FILE_NAME,
+  FACEBOOK_STORY_PHOTO,
+  FACEBOOK_STORY_VIDEO,
   INSTAGRAM_COOKIES_FILE_NAME,
   REEL,
 } from './constants';
@@ -50,11 +52,9 @@ export class ScrappersService {
     console.log('Creating page');
     const page = await browser.newPage();
 
-    // if (platform.name !== FACEBOOK) {
     // enable intercepter
     console.log('Enabling intercepter');
     this.enableIntercepter(page);
-    // }
 
     //! to save cookies
     // await this.login(page, platform);
@@ -83,14 +83,28 @@ export class ScrappersService {
     }
 
     if (platform.name == FACEBOOK) {
-      if (platform.type == VIDEO) {
-        await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+      const content = await page.content();
 
-        const { data } = await this.getFacebookVideoLink(page, hostName);
+      if (platform.type == VIDEO) {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+        const { data } = await this.getFacebookVideoLink(content, hostName);
 
         response = data;
       }
+
+      if (platform.type == STORIES) {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+        const content = await page.content();
+
+        const { data } = await this.getFacebookStoriesLink(content);
+
+        return { data };
+      }
     }
+
+    // stopping explicit page load as the api data is already fetched
+    await page.evaluate(() => window.stop());
 
     // closing browser
     await browser.close();
@@ -133,11 +147,9 @@ export class ScrappersService {
   }
 
   async getFacebookVideoLink(
-    page: any,
+    content: any,
     hostname: string,
   ): Promise<{ data: string }> {
-    const content = await page.content();
-
     const result: any = extractSubstring(
       content,
       '[{"representations":',
@@ -184,6 +196,45 @@ export class ScrappersService {
     return { data: `${hostname}/public/${outputFilename}` };
   }
 
+  async getFacebookStoriesLink(content: any): Promise<any> {
+    const photos: any = [];
+    const videos: any = [];
+
+    const result: any = extractSubstring(
+      content,
+      ',"unified_stories":{"edges":',
+      '},"owner":',
+    );
+
+    const jsonParsed = JSON.parse(result);
+
+    console.log(jsonParsed);
+
+    jsonParsed.forEach((edge: any) => {
+      console.log('in');
+      console.log(edge);
+      edge.attachments.forEach((attachment: any) => {
+        if (attachment.media.__typename == FACEBOOK_STORY_PHOTO) {
+          photos.push(attachment.media.image.uri);
+        }
+
+        if (attachment.media.__typename == FACEBOOK_STORY_VIDEO) {
+          videos.push({
+            sd: attachment.media.browser_native_sd_url,
+            hd: attachment.media.browser_native_hd_url,
+          });
+        }
+      });
+    });
+
+    return {
+      data: {
+        photos,
+        videos,
+      },
+    };
+  }
+
   async getInstagramVideoLinks(page: any): Promise<{ data: object | string }> {
     // Wait for the video element to appear
     const videoElement = await page.waitForSelector('video');
@@ -203,9 +254,6 @@ export class ScrappersService {
     const { data } = await this.getInstagramStoriesProcessedData(
       await mediaApiResponse.json(),
     );
-
-    // stopping explicit page load as the api data is already fetched
-    await page.evaluate(() => window.stop());
 
     return { data };
   }

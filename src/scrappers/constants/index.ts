@@ -46,13 +46,16 @@ export const BROWSER_OPTIONS = [
   '--disable-features=site-per-process',
 ];
 
+export const FACEBOOK_STORY_PHOTO = 'Photo';
+export const FACEBOOK_STORY_VIDEO = 'Video';
+
 export const INSTAGRAM = 'instagram';
 export const FACEBOOK = 'facebook';
 export const VIDEO = 'video';
 export const STORIES = 'stories';
 export const REEL = 'reel';
 
-export const COOKIES_PATH = 'scrappers/cookies';
+export const COOKIES_PATH = 'src/scrappers/cookies';
 
 export const INSTAGRAM_COOKIES_FILE_NAME = 'instagram.json';
 
