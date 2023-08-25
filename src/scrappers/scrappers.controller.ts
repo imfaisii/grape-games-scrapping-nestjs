@@ -32,7 +32,6 @@ export class ScrappersController {
         body.url,
         platform,
         showBrowser,
-        requestHost,
       );
 
       return createApiResponse(true, 'success', data);

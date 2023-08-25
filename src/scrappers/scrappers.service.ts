@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import * as ffmpeg from 'fluent-ffmpeg';
-import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import axios from 'axios';
 import puppeteer from 'puppeteer';
-import { createFile, deleteFile, getFile } from 'src/helpers/storage';
+import { createFile, getFile } from 'src/helpers/storage';
 import {
   BROWSER_OPTIONS,
   COOKIES_PATH,
@@ -16,7 +14,7 @@ import {
 } from './constants';
 import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
-import { extractSubstring } from '@src/helpers/global';
+import { getStringBetween } from '@src/helpers/global';
 
 @Injectable()
 export class ScrappersService {
@@ -36,7 +34,6 @@ export class ScrappersService {
     url: string,
     platform: Platform,
     showBrower: boolean = false,
-    hostName: string,
   ): Promise<any> {
     // declarations
     let response: any;
@@ -83,12 +80,10 @@ export class ScrappersService {
     }
 
     if (platform.name == FACEBOOK) {
-      const content = await page.content();
-
       if (platform.type == VIDEO) {
         await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-        const { data } = await this.getFacebookVideoLink(content, hostName);
+        const { data } = await this.getFacebookVideoLink(page);
 
         response = data;
       }
@@ -146,10 +141,23 @@ export class ScrappersService {
     }
   }
 
-  async getFacebookVideoLink(
-    content: any,
-    hostname: string,
-  ): Promise<{ data: string }> {
+  async getFacebookVideoLink(page: any): Promise<{ data: string }> {
+    const xpath = '//video';
+
+    const element = await page.waitForXPath(xpath, {
+      visible: true,
+      timeout: 10000,
+    });
+
+    // Get the 'src' attribute of the video element
+    const videoSrc = await page.evaluate(
+      (el: any) => el.getAttribute('src'),
+      element,
+    );
+
+    return { data: videoSrc };
+
+    /* TODO: This is not required now as the video is already downloaded
     const result: any = extractSubstring(
       content,
       '[{"representations":',
@@ -194,17 +202,22 @@ export class ScrappersService {
     await deleteFile(`public/${videoInputFileName}`);
 
     return { data: `${hostname}/public/${outputFilename}` };
+    */
   }
 
   async getFacebookStoriesLink(content: any): Promise<any> {
     const photos: any = [];
     const videos: any = [];
 
-    const result: any = extractSubstring(
+    const result: any = getStringBetween(
       content,
-      ',"unified_stories":{"edges":',
-      '},"owner":',
+      '","viewerList_viewers":{"edges":[',
+      '"is_viewer_list_data_available":',
     );
+
+    console.log('saving file');
+
+    await createFile('src', 'test.json', result);
 
     const jsonParsed = JSON.parse(result);
 
@@ -214,6 +227,8 @@ export class ScrappersService {
       console.log('in');
       console.log(edge);
       edge.attachments.forEach((attachment: any) => {
+        console.log('edge');
+        console.log(edge);
         if (attachment.media.__typename == FACEBOOK_STORY_PHOTO) {
           photos.push(attachment.media.image.uri);
         }
