@@ -55,7 +55,7 @@ export const VIDEO = 'video';
 export const STORIES = 'stories';
 export const REEL = 'reel';
 
-export const COOKIES_PATH = 'src/scrappers/cookies';
+export const COOKIES_PATH = 'scrappers/cookies';
 
 export const INSTAGRAM_COOKIES_FILE_NAME = 'instagram.json';
 
