@@ -51,19 +51,23 @@ export class ScrappersService {
 
     // enable intercepter
     console.log('Enabling intercepter');
-    this.enableIntercepter(page);
-
-    //! to save cookies
-    // await this.login(page, platform);
-    // await this.saveCookies(page, platform);
+    await this.enableIntercepter(page);
 
     // loading cookies
-    console.log('Loading cookies');
     await this.loadCookies(page);
 
-    // visiting story link
-    console.log('Visiting link');
-    page.goto(url);
+    if (platform.name === FACEBOOK) {
+      await page.goto(url, { waitUntil: 'networkidle2' });
+
+      if ((await page.$('input[name="email"]')) !== null) {
+        await this.login(page, platform);
+        page.goto(url);
+      }
+    } else {
+      // visiting story link
+      console.log('Visiting link');
+      page.goto(url);
+    }
 
     if (platform.name == INSTAGRAM) {
       if (platform.type == STORIES) {
@@ -118,22 +122,27 @@ export class ScrappersService {
 
       // Find and click the submit button
       await page.click('button[type="submit"]');
-
-      // Wait for the next page to load (you might need to adjust the selector)
-      await page.waitForNavigation({
-        waitUntil: 'networkidle0',
-      });
     }
 
     if (platform.name == FACEBOOK) {
       // Navigate to the target page
       await page.goto('https://web.facebook.com/?_rdc=1&_rdr');
 
-      //! maunally login
-      // console.log('Waiting for login..');
-      // await sleep(30000);
-      // console.log('Done Waiting for login..');
+      await page.waitForSelector('input[name="email"]');
+      await page.type('input[name="email"]', 'cfaysal044@gmail.com');
+
+      await page.waitForSelector('input[name="pass"]');
+      await page.type('input[name="pass"]', 'Pakistan2021');
+
+      await page.click('button[name="login"]');
     }
+
+    // Wait for the next page to load (you might need to adjust the selector)
+    await page.waitForNavigation({
+      waitUntil: 'networkidle0',
+    });
+
+    await this.saveCookies(page, platform);
   }
 
   async getFacebookVideoLink(page: any): Promise<{ data: string }> {
@@ -154,8 +163,6 @@ export class ScrappersService {
   }
 
   async getFacebookStoriesLink(page: any): Promise<any> {
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
-
     const videos: any = [];
     const photos: any = [];
 
@@ -163,12 +170,13 @@ export class ScrappersService {
 
     const result: any = getStringsBetween(
       content,
-      '","attachments":',
-      ',"story_card_seen_state":{"',
+      'attachments',
+      'story_card_seen_state',
     );
 
     result.forEach((entry: any) => {
-      const json = JSON.parse(entry);
+      const modifiedString = entry.slice(2, -2);
+      const json = JSON.parse(modifiedString);
       const media = json[0].media;
 
       media.__typename == FACEBOOK_STORY_VIDEO
@@ -287,23 +295,24 @@ export class ScrappersService {
 
   async loadCookies(page: any): Promise<any> {
     // Check if cookies file exists and load cookies if present
-    try {
-      const cookieFiles = [
-        INSTAGRAM_COOKIES_FILE_NAME,
-        FACEBOOK_COOKIES_FILE_NAME,
-      ];
+    const cookieFiles = [
+      INSTAGRAM_COOKIES_FILE_NAME,
+      FACEBOOK_COOKIES_FILE_NAME,
+    ];
 
-      const cookies = [];
+    const cookies = [];
 
-      for (const cookieFile of cookieFiles) {
-        const path = COOKIES_PATH + '/' + cookieFile;
+    for (const cookieFile of cookieFiles) {
+      const path = COOKIES_PATH + '/' + cookieFile;
+
+      try {
         const cookiesString: any = await getFile(path, 'utf8');
         cookies.push(...JSON.parse(cookiesString));
+      } catch (error) {
+        console.log("Cookies file doesn't exist or couldn't be loaded.", path);
       }
-
-      await page.setCookie(...cookies);
-    } catch (error) {
-      console.log("Cookies file doesn't exist or couldn't be loaded.");
     }
+
+    await page.setCookie(...cookies);
   }
 }

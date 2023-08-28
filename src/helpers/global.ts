@@ -31,7 +31,7 @@ export const extractSubstring = (
 };
 
 export const getStringsBetween = (
-  string: string,
+  string: string | any,
   start: string,
   end: string,
 ): string[] => {
