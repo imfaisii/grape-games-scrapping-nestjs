@@ -30,24 +30,40 @@ export const extractSubstring = (
   return extractedString;
 };
 
-export const getStringBetween = (
+export const getStringsBetween = (
   string: string,
   start: string,
   end: string,
-): string => {
-  const startIndex = string.indexOf(start);
-  if (startIndex === -1) {
-    return null; // Start substring not found
+): string[] => {
+  const extractedStrings = [];
+  let startIndex = 0;
+
+  while (true) {
+    const currentStartIndex = string.indexOf(start, startIndex);
+    if (currentStartIndex === -1) {
+      break; // No more start substrings found
+    }
+
+    const currentEndIndex = string.indexOf(
+      end,
+      currentStartIndex + start.length,
+    );
+    if (currentEndIndex === -1) {
+      break; // End substring not found after current start substring
+    }
+
+    const extractedString = string.substring(
+      currentStartIndex + start.length,
+      currentEndIndex,
+    );
+
+    extractedStrings.push(extractedString);
+
+    // Move the startIndex to start searching after the current end index
+    startIndex = currentEndIndex + end.length;
   }
 
-  const endIndex = string.indexOf(end, startIndex + start.length);
-  if (endIndex === -1) {
-    return null; // End substring not found
-  }
-
-  const extractedString = string.substring(startIndex + start.length, endIndex);
-
-  return extractedString;
+  return extractedStrings;
 };
 
 export interface ApiResponse<T> {

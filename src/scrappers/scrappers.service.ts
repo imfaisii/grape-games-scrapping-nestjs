@@ -14,7 +14,7 @@ import {
 } from './constants';
 import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
-import { getStringBetween } from '@src/helpers/global';
+import { getStringsBetween } from '@src/helpers/global';
 
 @Injectable()
 export class ScrappersService {
@@ -80,21 +80,16 @@ export class ScrappersService {
     }
 
     if (platform.name == FACEBOOK) {
-      if (platform.type == VIDEO) {
-        await page.waitForNavigation({ waitUntil: 'networkidle2' });
-
+      if ([REEL, VIDEO].includes(platform.type)) {
         const { data } = await this.getFacebookVideoLink(page);
 
         response = data;
       }
 
       if (platform.type == STORIES) {
-        await page.waitForNavigation({ waitUntil: 'networkidle2' });
-        const content = await page.content();
+        const { data } = await this.getFacebookStoriesLink(page);
 
-        const { data } = await this.getFacebookStoriesLink(content);
-
-        return { data };
+        response = data;
       }
     }
 
@@ -156,90 +151,34 @@ export class ScrappersService {
     );
 
     return { data: videoSrc };
-
-    /* TODO: This is not required now as the video is already downloaded
-    const result: any = extractSubstring(
-      content,
-      '[{"representations":',
-      ',"video_id"',
-    );
-
-    const jsonParsed = JSON.parse(result);
-
-    let video = null;
-    let audio = null;
-    const outputFilename = `${uuidv4()}.mp4`;
-    const audioInputFileName = `a-${outputFilename}`;
-    const videoInputFileName = `v-${outputFilename}`;
-
-    for (const obj of jsonParsed) {
-      if (obj.mime_type.startsWith('video/')) {
-        video = obj.base_url;
-      } else if (obj.mime_type.startsWith('audio/')) {
-        audio = obj.base_url;
-      }
-    }
-
-    if (!audio) {
-      return { data: video };
-    }
-
-    await this.downloadFile(audio, `public/${audioInputFileName}`);
-    await this.downloadFile(video, `public/${videoInputFileName}`);
-
-    await new Promise((resolve, reject) => {
-      ffmpeg()
-        .input(`public/${audioInputFileName}`)
-        .input(`public/${videoInputFileName}`)
-        .outputOptions('-c:v copy')
-        .outputOptions('-c:a aac')
-        .save(`public/${outputFilename}`)
-        .on('end', resolve)
-        .on('error', reject);
-    });
-
-    await deleteFile(`public/${audioInputFileName}`);
-    await deleteFile(`public/${videoInputFileName}`);
-
-    return { data: `${hostname}/public/${outputFilename}` };
-    */
   }
 
-  async getFacebookStoriesLink(content: any): Promise<any> {
-    const photos: any = [];
-    const videos: any = [];
+  async getFacebookStoriesLink(page: any): Promise<any> {
+    await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-    const result: any = getStringBetween(
+    const videos: any = [];
+    const photos: any = [];
+
+    const content = await page.content();
+
+    const result: any = getStringsBetween(
       content,
-      '","viewerList_viewers":{"edges":[',
-      '"is_viewer_list_data_available":',
+      '","attachments":',
+      ',"story_card_seen_state":{"',
     );
 
-    console.log('saving file');
+    result.forEach((entry: any) => {
+      const json = JSON.parse(entry);
+      const media = json[0].media;
 
-    await createFile('src', 'test.json', result);
-
-    const jsonParsed = JSON.parse(result);
-
-    console.log(jsonParsed);
-
-    jsonParsed.forEach((edge: any) => {
-      console.log('in');
-      console.log(edge);
-      edge.attachments.forEach((attachment: any) => {
-        console.log('edge');
-        console.log(edge);
-        if (attachment.media.__typename == FACEBOOK_STORY_PHOTO) {
-          photos.push(attachment.media.image.uri);
-        }
-
-        if (attachment.media.__typename == FACEBOOK_STORY_VIDEO) {
-          videos.push({
-            sd: attachment.media.browser_native_sd_url,
-            hd: attachment.media.browser_native_hd_url,
+      media.__typename == FACEBOOK_STORY_VIDEO
+        ? videos.push({
+            thumbnail: media.previewImage.uri,
+            url: media.browser_native_sd_url,
+          })
+        : photos.push({
+            url: media.previewImage.uri,
           });
-        }
-      });
     });
 
     return {
