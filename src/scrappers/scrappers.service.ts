@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import puppeteer from 'puppeteer';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import puppeteer from 'puppeteer-extra';
+import UserAgent from 'user-agents';
 import { createFile, getFile } from 'src/helpers/storage';
 import {
   BROWSER_OPTIONS,
@@ -23,9 +25,16 @@ export class ScrappersService {
     // declarations
     let response: any;
 
+    const USER_AGENT =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36';
+
+    //Randomize User agent or Set a valid one
+    const userAgent = new UserAgent();
+    const UA = userAgent.toString() || USER_AGENT;
+
     // launch browser
     console.log('Launching browser');
-    const browser = await puppeteer.launch({
+    const browser = await puppeteer.use(StealthPlugin()).launch({
       headless: showBrower ? false : true,
       args: BROWSER_OPTIONS,
     });
@@ -33,6 +42,43 @@ export class ScrappersService {
     // Open a new page
     console.log('Creating page');
     const page = await browser.newPage();
+
+    //Randomize viewport size
+    await page.setViewport({
+      width: 1920 + Math.floor(Math.random() * 100),
+      height: 3000 + Math.floor(Math.random() * 100),
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      isLandscape: false,
+      isMobile: false,
+    });
+
+    await page.setUserAgent(UA);
+    await page.setJavaScriptEnabled(true);
+    await page.setDefaultNavigationTimeout(0);
+
+    await page.evaluateOnNewDocument(() => {
+      // Pass webdriver check
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => false,
+      });
+    });
+
+    await page.evaluateOnNewDocument(() => {
+      // Overwrite the `plugins` property to use a custom getter.
+      Object.defineProperty(navigator, 'plugins', {
+        // This just needs to have `length > 0` for the current test,
+        // but we could mock the plugins too if necessary.
+        get: () => [1, 2, 3, 4, 5],
+      });
+    });
+
+    await page.evaluateOnNewDocument(() => {
+      // Overwrite the `languages` property to use a custom getter.
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+    });
 
     // enable intercepter
     console.log('Enabling intercepter');
@@ -208,8 +254,6 @@ export class ScrappersService {
   }
 
   async getInstagramVideoLinks(page: any): Promise<{ data: object | string }> {
-    const content = await page.content();
-    await createFile('public', 'test.html', content);
     // Wait for the video element to appear
     const videoElement = await page.waitForSelector('video');
 
@@ -276,7 +320,8 @@ export class ScrappersService {
 
       if (
         request.resourceType() === 'stylesheet' ||
-        request.resourceType() === 'image'
+        request.resourceType() === 'image' ||
+        request.resourceType() == 'font'
       ) {
         request.abort();
       } else {
