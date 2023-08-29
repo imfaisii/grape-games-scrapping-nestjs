@@ -209,7 +209,7 @@ export class ScrappersService {
 
   async getInstagramVideoLinks(page: any): Promise<{ data: object | string }> {
     // Wait for the video element to appear
-    const videoElement = await page.waitForSelector('video', { timeout: 0 });
+    const videoElement = await page.waitForSelector('video');
 
     // Get the src attribute of the video element
     const videoSrc = await videoElement.evaluate((element) => element.src);
