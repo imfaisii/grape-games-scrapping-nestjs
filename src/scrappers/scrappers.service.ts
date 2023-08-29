@@ -13,8 +13,6 @@ import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
 import { getStringsBetween } from '@src/helpers/global';
 
-//! let isInstagraUserLoggedOut = false;
-
 @Injectable()
 export class ScrappersService {
   async scrap(
@@ -51,13 +49,19 @@ export class ScrappersService {
         page.goto(url);
       }
     } else {
-      //! await page.goto(url, { waitUntil: 'networkidle2' });
+      if (platform.type == STORIES) {
+        await page.goto('https://instagram.com', { waitUntil: 'networkidle2' });
+        const content = await page.content();
 
-      //! if (isInstagraUserLoggedOut) {
-      //!   await this.login(page, platform);
-      //!   page.goto(url);
-      //! }
-      page.goto(url);
+        if (content.includes('name="username"')) {
+          await this.login(page, platform);
+          page.goto(url);
+        } else {
+          page.goto(url);
+        }
+      } else {
+        page.goto(url);
+      }
     }
 
     if (platform.name == INSTAGRAM) {
@@ -79,6 +83,21 @@ export class ScrappersService {
         const { data } = await this.getFacebookVideoLink(page);
 
         response = data;
+        if (platform.name === FACEBOOK) {
+          await page.goto(url, { waitUntil: 'networkidle2' });
+
+          if ((await page.$('input[name="email"]')) !== null) {
+            await this.login(page, platform);
+            page.goto(url);
+          }
+        } else {
+          await page.goto(url, { waitUntil: 'networkidle2' });
+
+          if ((await page.$('input[name="email"]')) !== null) {
+            await this.login(page, platform);
+            page.goto(url);
+          }
+        }
       }
 
       if (platform.type == STORIES) {
@@ -120,9 +139,9 @@ export class ScrappersService {
       await page.goto('https://web.facebook.com/?_rdc=1&_rdr');
 
       await page.waitForSelector('input[name="email"]');
-      await page.type('input[name="email"]', 'cfaysal044@gmail.com');
-
       await page.waitForSelector('input[name="pass"]');
+
+      await page.type('input[name="email"]', 'cfaysal044@gmail.com');
       await page.type('input[name="pass"]', 'Pakistan2021');
 
       await page.click('button[name="login"]');
@@ -190,7 +209,7 @@ export class ScrappersService {
 
   async getInstagramVideoLinks(page: any): Promise<{ data: object | string }> {
     // Wait for the video element to appear
-    const videoElement = await page.waitForSelector('video');
+    const videoElement = await page.waitForSelector('video', { timeout: 0 });
 
     // Get the src attribute of the video element
     const videoSrc = await videoElement.evaluate((element) => element.src);
@@ -246,11 +265,6 @@ export class ScrappersService {
 
     // aborting all requests except document
     page.on('request', (request: any) => {
-      if (request.url().includes('get_ruling_for_media_content_logged_out')) {
-        //! isInstagraUserLoggedOut = true;
-        console.log('yaaay');
-      }
-
       if (request.url().includes('login')) {
         console.log('Login request intercepted', request.url());
       }
