@@ -247,7 +247,7 @@ export class ScrappersService {
     // aborting all requests except document
     page.on('request', (request: any) => {
       if (request.url().includes('get_ruling_for_media_content_logged_out')) {
-        isInstagraUserLoggedOut = true;
+        //! isInstagraUserLoggedOut = true;
         console.log('yaaay');
       }
 
