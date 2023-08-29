@@ -127,7 +127,7 @@ export class ScrappersService {
       await page.waitForSelector('input[name="password"]');
 
       // Enter the username and password
-      await page.type('input[name="username"]', 'imfaisii7');
+      await page.type('input[name="username"]', 'imfaisii4');
       await page.type('input[name="password"]', 'Pakistan2021');
 
       // Find and click the submit button
