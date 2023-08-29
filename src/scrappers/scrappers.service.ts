@@ -208,6 +208,8 @@ export class ScrappersService {
   }
 
   async getInstagramVideoLinks(page: any): Promise<{ data: object | string }> {
+    const content = await page.content();
+    await createFile('public', 'test.html', content);
     // Wait for the video element to appear
     const videoElement = await page.waitForSelector('video');
 
