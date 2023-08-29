@@ -51,12 +51,13 @@ export class ScrappersService {
         page.goto(url);
       }
     } else {
-      await page.goto(url, { waitUntil: 'networkidle2' });
+      //! await page.goto(url, { waitUntil: 'networkidle2' });
 
-      if (isInstagraUserLoggedOut) {
-        await this.login(page, platform);
-        page.goto(url);
-      }
+      //! if (isInstagraUserLoggedOut) {
+      //!   await this.login(page, platform);
+      //!   page.goto(url);
+      //! }
+      page.goto(url);
     }
 
     if (platform.name == INSTAGRAM) {
