@@ -311,9 +311,6 @@ export class ScrappersService {
 
     // aborting all requests except document
     page.on('request', async (request: any) => {
-      const url = await page.url();
-      console.log('Page url', url);
-
       if (request.url().includes('login')) {
         console.log('Login request intercepted', request.url());
       }
