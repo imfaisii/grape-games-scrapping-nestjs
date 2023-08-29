@@ -1,4 +1,16 @@
 /* TODO: This is not required now as the video is already downloaded
+  async downloadFile(url, filePath) {
+    const response = await axios.get(url, { responseType: 'stream' });
+    const writer = fs.createWriteStream(filePath);
+
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
+  }
+  
 const result: any = extractSubstring(
   content,
   '[{"representations":',

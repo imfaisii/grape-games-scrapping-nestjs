@@ -1,13 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import axios from 'axios';
 import puppeteer from 'puppeteer';
 import { createFile, getFile } from 'src/helpers/storage';
 import {
   BROWSER_OPTIONS,
   COOKIES_PATH,
   FACEBOOK_COOKIES_FILE_NAME,
-  FACEBOOK_STORY_PHOTO,
   FACEBOOK_STORY_VIDEO,
   INSTAGRAM_COOKIES_FILE_NAME,
   REEL,
@@ -16,20 +13,10 @@ import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
 import { getStringsBetween } from '@src/helpers/global';
 
+let isInstagraUserLoggedOut = false;
+
 @Injectable()
 export class ScrappersService {
-  async downloadFile(url, filePath) {
-    const response = await axios.get(url, { responseType: 'stream' });
-    const writer = fs.createWriteStream(filePath);
-
-    response.data.pipe(writer);
-
-    return new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-  }
-
   async scrap(
     url: string,
     platform: Platform,
@@ -64,9 +51,12 @@ export class ScrappersService {
         page.goto(url);
       }
     } else {
-      // visiting story link
-      console.log('Visiting link');
-      page.goto(url);
+      await page.goto(url, { waitUntil: 'networkidle2' });
+
+      if (isInstagraUserLoggedOut) {
+        await this.login(page, platform);
+        page.goto(url);
+      }
     }
 
     if (platform.name == INSTAGRAM) {
@@ -255,6 +245,11 @@ export class ScrappersService {
 
     // aborting all requests except document
     page.on('request', (request: any) => {
+      if (request.url().includes('get_ruling_for_media_content_logged_out')) {
+        isInstagraUserLoggedOut = true;
+        console.log('yaaay');
+      }
+
       if (request.url().includes('login')) {
         console.log('Login request intercepted', request.url());
       }
