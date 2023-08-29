@@ -13,7 +13,7 @@ import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
 import { getStringsBetween } from '@src/helpers/global';
 
-//! let isInstagraUserLoggedOut = false;
+let isInstagraUserLoggedOut = false;
 
 @Injectable()
 export class ScrappersService {
@@ -51,13 +51,12 @@ export class ScrappersService {
         page.goto(url);
       }
     } else {
-      //! await page.goto(url, { waitUntil: 'networkidle2' });
+      await page.goto(url, { waitUntil: 'networkidle2' });
 
-      //! if (isInstagraUserLoggedOut) {
-      //!   await this.login(page, platform);
-      //!   page.goto(url);
-      //! }
-      page.goto(url);
+      if (isInstagraUserLoggedOut) {
+        await this.login(page, platform);
+        page.goto(url);
+      }
     }
 
     if (platform.name == INSTAGRAM) {
@@ -247,7 +246,7 @@ export class ScrappersService {
     // aborting all requests except document
     page.on('request', (request: any) => {
       if (request.url().includes('get_ruling_for_media_content_logged_out')) {
-        //! isInstagraUserLoggedOut = true;
+        isInstagraUserLoggedOut = true;
         console.log('yaaay');
       }
 
