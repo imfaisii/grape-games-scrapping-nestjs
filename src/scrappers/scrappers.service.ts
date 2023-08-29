@@ -13,7 +13,7 @@ import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
 import { getStringsBetween } from '@src/helpers/global';
 
-let isInstagraUserLoggedOut = false;
+//! let isInstagraUserLoggedOut = false;
 
 @Injectable()
 export class ScrappersService {
