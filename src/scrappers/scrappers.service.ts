@@ -38,10 +38,8 @@ export class ScrappersService {
     console.log('Enabling intercepter');
     await this.enableIntercepter(page);
 
-    if (platform.name === FACEBOOK) {
-      // loading cookies
-      await this.loadCookies(page);
-    }
+    // loading cookies
+    await this.loadCookies(page);
 
     if (platform.name === FACEBOOK) {
       await page.goto(url, { waitUntil: 'networkidle2' });
@@ -51,8 +49,19 @@ export class ScrappersService {
         page.goto(url);
       }
     } else {
-      await this.login(page, platform);
-      page.goto(url);
+      if (platform.type == STORIES) {
+        await page.goto('https://instagram.com', { waitUntil: 'networkidle2' });
+        const content = await page.content();
+
+        if (content.includes('name="username"')) {
+          await this.login(page, platform);
+          page.goto(url);
+        } else {
+          page.goto(url);
+        }
+      } else {
+        page.goto(url);
+      }
     }
 
     if (platform.name == INSTAGRAM) {
