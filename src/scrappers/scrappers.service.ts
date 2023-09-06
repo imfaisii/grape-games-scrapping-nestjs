@@ -187,7 +187,7 @@ export class ScrappersService {
       await page.waitForSelector('input[name="email"]');
       await page.waitForSelector('input[name="pass"]');
 
-      await page.type('input[name="email"]', 'cfaysal044@gmail.com');
+      await page.type('input[name="email"]', 'cfaysal0077@gmail.com');
       await page.type('input[name="pass"]', 'Pakistan2021');
 
       await page.click('button[name="login"]');
