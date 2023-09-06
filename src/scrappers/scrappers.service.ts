@@ -303,7 +303,7 @@ export class ScrappersService {
     // await createFile('src', 'test.json', JSON.stringify(data));
 
     // Define a regex pattern to match a number between two slashes
-    const regex = /\/(\d+)\/$/;
+    const regex = /\/(\d+)[^\/]*$/;
 
     // Use the `exec` method to find the match
     const match = regex.exec(url);
