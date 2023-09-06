@@ -13,7 +13,7 @@ import {
 } from './constants';
 import { Platform } from './interfaces';
 import { FACEBOOK, INSTAGRAM, STORIES, VIDEO } from './constants';
-import { getStringsBetween } from '@src/helpers/global';
+import { extractSubstring } from '@src/helpers/global';
 
 @Injectable()
 export class ScrappersService {
@@ -112,7 +112,7 @@ export class ScrappersService {
 
     if (platform.name == INSTAGRAM) {
       if (platform.type == STORIES) {
-        const { data } = await this.getInstagramStoriesLinks(page);
+        const { data } = await this.getInstagramStoriesLinks(page, url);
 
         response = data;
       }
@@ -147,7 +147,7 @@ export class ScrappersService {
       }
 
       if (platform.type == STORIES) {
-        const { data } = await this.getFacebookStoriesLink(page);
+        const { data } = await this.getFacebookStoriesLink(page, url);
 
         response = data;
       }
@@ -218,39 +218,54 @@ export class ScrappersService {
     return { data: videoSrc };
   }
 
-  async getFacebookStoriesLink(page: any): Promise<any> {
-    const videos: any = [];
-    const photos: any = [];
+  async getFacebookStoriesLink(page: any, url: string): Promise<any> {
+    const resultArray: any = [];
+    const regex = /\/([^/]+)\/\?/;
 
-    const content = await page.content();
+    // Use the match method to find the matching substring
+    const match = url.match(regex);
 
-    const result: any = getStringsBetween(
-      content,
-      'attachments',
-      'story_card_seen_state',
-    );
+    // Extract the matched string
+    if (match && match[1]) {
+      try {
+        const storyId = match[1];
 
-    result.forEach((entry: any) => {
-      const modifiedString = entry.slice(2, -2);
-      const json = JSON.parse(modifiedString);
-      const media = json[0].media;
+        const content = await page.content();
 
-      media.__typename == FACEBOOK_STORY_VIDEO
-        ? videos.push({
+        const result: any = extractSubstring(
+          content,
+          '"unified_stories":{"edges":',
+          '},"owner":{"',
+        );
+
+        const json = JSON.parse(result);
+
+        const storyNode = json.filter((i: any) => i.node.id === storyId);
+        const media = storyNode[0].node.attachments[0].media;
+
+        if (media.__typename === FACEBOOK_STORY_VIDEO) {
+          console.log('inside if');
+          resultArray.push({
+            is_image: false,
             thumbnail: media.previewImage.uri,
             url: media.browser_native_sd_url,
-          })
-        : photos.push({
+          });
+        } else {
+          resultArray.push({
+            is_image: true,
             url: media.previewImage.uri,
           });
-    });
+        }
 
-    return {
-      data: {
-        photos,
-        videos,
-      },
-    };
+        return {
+          data: resultArray,
+        };
+      } catch (e) {
+        return { data: [], error: e };
+      }
+    } else {
+      return { data: [] };
+    }
   }
 
   async getInstagramVideoLinks(page: any): Promise<{ data: object | string }> {
@@ -263,7 +278,10 @@ export class ScrappersService {
     return { data: videoSrc };
   }
 
-  async getInstagramStoriesLinks(page: any): Promise<{ data: object | any }> {
+  async getInstagramStoriesLinks(
+    page: any,
+    url: string,
+  ): Promise<{ data: object | any }> {
     const mediaApiResponse = await page.waitForResponse((response: any) => {
       return response.url().includes('api/v1/feed/reels_media');
     });
@@ -271,38 +289,57 @@ export class ScrappersService {
     // storing result to return to api
     const { data } = await this.getInstagramStoriesProcessedData(
       await mediaApiResponse.json(),
+      url,
     );
 
     return { data };
   }
 
-  async getInstagramStoriesProcessedData(data: any): Promise<{ data: any }> {
+  async getInstagramStoriesProcessedData(
+    data: any,
+    url: string,
+  ): Promise<{ data: any }> {
     //! UNCOMMENT TO WRITE FOR DEUGGING
     // await createFile('src', 'test.json', JSON.stringify(data));
 
-    // if the link is wrong or there is no story
-    if (data['reels_media'].length === 0) {
-      return { data: [] };
-    }
+    // Define a regex pattern to match a number between two slashes
+    const regex = /\/(\d+)\/$/;
 
-    // processing the data
-    const processedData = data['reels_media'][0]['items'].map((item: any) => {
-      const isImage = !item.hasOwnProperty('video_versions');
+    // Use the `exec` method to find the match
+    const match = regex.exec(url);
 
-      let url: string;
+    if (match) {
+      // The matched number will be in the first capture group (index 1)
+      const postId = match[1];
 
-      if (isImage) {
-        const firstImageCandidate = item.image_versions2.candidates[0];
-        url = firstImageCandidate ? firstImageCandidate.url : null;
-      } else {
-        const firstVideoVersion = item.video_versions[0];
-        url = firstVideoVersion ? firstVideoVersion.url : null;
+      // if the link is wrong or there is no story
+      if (data['reels_media'].length === 0) {
+        return { data: [] };
       }
 
-      return { is_image: isImage, url };
-    });
+      // processing the data
+      const processedData = data['reels_media'][0]['items']
+        .filter((i: any) => i.pk === postId)
+        .map((item: any) => {
+          const isImage = !item.hasOwnProperty('video_versions');
 
-    return { data: processedData };
+          let url: string;
+
+          if (isImage) {
+            const firstImageCandidate = item.image_versions2.candidates[0];
+            url = firstImageCandidate ? firstImageCandidate.url : null;
+          } else {
+            const firstVideoVersion = item.video_versions[0];
+            url = firstVideoVersion ? firstVideoVersion.url : null;
+          }
+
+          return { is_image: isImage, url };
+        });
+
+      return { data: processedData };
+    } else {
+      return { data: [] };
+    }
   }
 
   async enableIntercepter(page: any) {
